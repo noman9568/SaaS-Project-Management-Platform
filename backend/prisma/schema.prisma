@@ -1,0 +1,118 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+}
+
+enum ProjectStatus {
+  ACTIVE
+  COMPLETED
+  ARCHIVED
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum OrganizationRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+
+model User {
+  id                Int   @id @default(autoincrement())
+  name              String
+  email             String    @unique
+  password          String?
+  oauthProvider     String?
+  oauthId           String?
+
+  ownedOrganizations  Organization[]
+
+  memberships       Membership[]
+  createdProjects   Project[]   @relation("UserProjects")
+
+  assignedTasks     Task[] @relation("AssignedTasks")
+  createdTasks      Task[] @relation("CreatedTasks")
+
+  createdAt         DateTime @default(now())
+}
+
+
+model Organization {
+  id          Int   @id  @default(autoincrement())
+  name        String
+  ownerId     Int
+  owner       User  @relation(fields: [ownerId], references: [id])
+
+  memberships Membership[]
+  projects    Project[]
+
+  createdAt   DateTime  @default(now()) 
+}
+
+
+model Membership {
+  id              Int   @id @default(autoincrement())
+  userId          Int
+  organizationId  Int
+  role            OrganizationRole  @default(MEMBER)
+
+  user            User    @relation(fields: [userId], references: [id])
+  organization    Organization    @relation(fields: [organizationId], references: [id])
+
+  @@unique([userId, organizationId])
+}
+
+
+model Project {
+  id              Int   @id  @default(autoincrement())
+  name            String
+  description     String?
+
+  status          ProjectStatus   @default(ACTIVE)
+
+  organizationId  Int
+  organization    Organization @relation(fields: [organizationId], references: [id])
+
+  createdById     Int
+  createdBy       User @relation("UserProjects", fields: [createdById], references: [id])
+
+  task            Task[]
+
+  createdAt       DateTime  @default(now())
+}
+
+
+model Task {
+  id              Int   @id @default(autoincrement())
+  title           String
+  description     String
+
+  projectId       Int
+  project         Project   @relation(fields: [projectId], references: [id])
+
+  assignedToId    Int?
+  assignedTo      User?   @relation("AssignedTasks", fields: [assignedToId], references: [id])
+
+  createdById     Int
+  createdBy       User    @relation("CreatedTasks", fields: [createdById], references: [id])
+
+  status          TaskStatus  @default(TODO)
+  priority        TaskPriority  @default(MEDIUM)
+
+  dueDate         DateTime?
+  createdAt       DateTime    @default(now())    
+}
